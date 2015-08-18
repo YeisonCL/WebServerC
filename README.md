@@ -51,5 +51,5 @@ Use CTRL + C para apagar el web server.
 - El servidor por defecto se inicia en la dirección IP local asignada a la computadora.
 - Sólo son soportadas las funciones GET, POST, PUT y DELETE del protocolo HTTP.
 - Al utilizar la funcion PUT sólo es posible crear archivos de texto plano.
-
+- El servidor funciona única y exclusivamente en un ambiente GNU/Linux.
 
