@@ -10,7 +10,9 @@
 
 #include "WebServer.h"
 
+/*"/root/Escritorio/YeisonCServer/HardDrive"*/
+
 int main(int argc, char *argv[]) 
 {
-	startWebServer(2);	
+	initializeWebServer(argc, argv);
 }

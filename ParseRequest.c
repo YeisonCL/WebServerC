@@ -79,7 +79,7 @@ void parseLineHeader(char *pReadBuffer, struct RequestInfo *pRequestInfo)
 	}
 	else
 	{
-		if(pRequestInfo->_method == POST)
+		if(pRequestInfo->_method == POST || pRequestInfo->_method == PUT)
 		{
 			if(*pReadBuffer != '\r' && pRequestInfo->_contentLength == 0)
 			{
@@ -123,7 +123,7 @@ void parseLineHeader(char *pReadBuffer, struct RequestInfo *pRequestInfo)
 
 int parseRequestInfo(int pConnection, struct RequestInfo *pRequestInfo)
 {
-	char readBuffer[MAX_REQUEST_LINE] = {0};
+	char *readBuffer;
     fd_set fileHandlers;
     struct timeval timeWait;
 
@@ -148,7 +148,8 @@ int parseRequestInfo(int pConnection, struct RequestInfo *pRequestInfo)
 		}
 		else if (FD_ISSET(pConnection, &fileHandlers)) 
 		{
-		    int valueAux = readLine(pConnection, readBuffer, MAX_REQUEST_LINE, pRequestInfo->_contentLength);
+			readBuffer = calloc(MAX_REQUEST_LINE, sizeof(char));
+		    int valueAux = readLine(pConnection, &readBuffer, MAX_REQUEST_LINE, pRequestInfo->_contentLength);
 		    if(valueAux == -1)
 		    {
 		    	_result = -1;
@@ -163,6 +164,7 @@ int parseRequestInfo(int pConnection, struct RequestInfo *pRequestInfo)
 		    {
 		    	parseLineHeader(readBuffer, pRequestInfo);
 		    }
+		    free(readBuffer);
 		}
     }
     return _result;

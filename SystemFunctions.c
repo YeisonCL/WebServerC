@@ -90,22 +90,37 @@ int writeLine (int pConnection, char *pReadBuffer, int pNumberCharacters)
     return _result;
 }
 
-int readLine(int pConnection, char *pReadBuffer, int pMaxRead, int pPosContent)
+int readLine(int pConnection, char **pReadBuffer, int pMaxRead, int pPosContent)
 {
+	char *readBufferAux = *pReadBuffer;
+	char *readBufferAuxTwo = *pReadBuffer;
+	int countRealloc = 2;
+	int initialMaxRead = pMaxRead;
 	_result = -1;
 	char c;
     for (int i = 0; i < pMaxRead; i++) 
-    {	
+    {
     	int valueAux = recv(pConnection, &c, 1, 0);
 		if (valueAux == 1 ) 
 		{
-		    *pReadBuffer++ = c;
-		    if (c == '\n')
+		    *readBufferAuxTwo++ = c;
+		    if (c == '\n' && pPosContent == 0)
 		    {
 		    	_result = 1;
 		    	break;
 		    }
-		    else if(pPosContent != 0)
+		    if(i + 2 == pMaxRead)
+		    {
+		    	pMaxRead = countRealloc * initialMaxRead;
+		    	char *auxPtr = realloc(readBufferAux, countRealloc * initialMaxRead);
+		    	*pReadBuffer = auxPtr;
+		    	readBufferAuxTwo = auxPtr;
+		    	readBufferAux = auxPtr;
+		    	auxPtr = NULL;
+		    	readBufferAuxTwo = readBufferAuxTwo + i + 1;
+		    	countRealloc++;
+		    }
+		    if(pPosContent != 0)
 		    {
 		    	if(i + 1 == pPosContent)
 		    	{

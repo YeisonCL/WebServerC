@@ -21,7 +21,7 @@ void createSocket()
 	{
 		ErrorExit("Se ha presentado un error al intentar crear el socket de conexión.");
 	}
-	print("Socket creado con exito.");
+	print("Socket principal creado con exito.");
 }
 
 /*Avisamos al sistema operativo que hemos creado un socket y queremos que una nuestro programa a el.*/
@@ -29,12 +29,12 @@ void bindSocket()
 {
 	_serverAdress.sin_family = AF_INET;
     _serverAdress.sin_addr.s_addr = htonl(INADDR_ANY);
-    _serverAdress.sin_port = htons(SERVER_PORT);
+    _serverAdress.sin_port = htons(_serverPort);
     if(bind(_socketServer, (struct sockaddr *) &_serverAdress, sizeof(_serverAdress)) == -1)
     {
     	ErrorExit("Se ha presentado un error al intentar asociar el socket de conexion.");
     }
-    print("Socket asociado con exito.");
+    print("Socket principal asociado con exito.");
 }
 
 /*Funcion que se encarga de escuchar las conexiones entrantes al servidor.*/
@@ -47,14 +47,84 @@ void listeningConnections()
 	print("Escuchando nuevas conexiones entrantes.");
 }
 
-/*Funcion que se encarga de crear los procesos que se utilizaran para atender las conexiones entrantes*/
-void startWebServer(int pMaxProcess)
+void closeChildProcess()
 {
-	_processMax = pMaxProcess;
+	for(int i = 0; i < _processMax; i++)
+	{
+		kill(_childProcess[i], SIGKILL);
+	}
+	free(_childProcess);
+}
+
+void exitServer()
+{
+	print("Cerrando socket principal.");
+	close(_socketServer);
+	print("Cerrando sockets de conexion interna.");
+	close(_socketPair[1]);
+	print("Cerrando los procesos hijos creados.");
+	closeChildProcess();
+	print("Hasta pronto.");
+    exit(EXIT_SUCCESS); 
+
+}
+
+void detectCloseSignal()
+{
+	struct sigaction closeSignal;
+	closeSignal.sa_handler = exitServer;
+	sigemptyset(&closeSignal.sa_mask);
+	closeSignal.sa_flags = 0;
+
+   sigaction(SIGINT, &closeSignal, NULL);
+}
+
+void initializeWebServer(int argc, char *argv[])
+{
+	int option;
+	int controlFlag = 0;
+	int flagHelp = 0;
+	while((option = getopt(argc,argv,"n:w:p:h")) != -1)
+	{
+		controlFlag = 1;
+		switch (option)
+		{
+			case 'n':
+				_processMax = charArrayToInt(optarg);
+				break;
+			case 'w':
+				strcpy(_rootPath, optarg);
+				break;
+			case 'p':
+				_serverPort = charArrayToInt(optarg);
+				break;
+			case 'h':
+				flagHelp = 1;
+				print("-n \t Cantidad de procesos a utilizar para la administracion de conexiones entrantes en el servidor.");
+				print("-w \t Path principal donde se alojara el servidor.");
+				print("-p \t Puerto donde se iniciara el servidor.");
+				print("Ejemplo: ./preforked-webserver -n 20 -w /root/http/www -p 8081");
+				break;
+		}
+	}
+	if(controlFlag == 0)
+	{
+		print("Por favor digite los parametros de configuracion del servidor, utilice la opcion -h para mas informacion.");
+	}
+	else if(flagHelp == 0)
+	{
+		startWebServer();
+	}
+}
+
+/*Funcion que se encarga de crear los procesos que se utilizaran para atender las conexiones entrantes*/
+void startWebServer()
+{
 	_processNumber = 0;
 	_pidFork = -1;
 	createSocketPair();
-	while(_processNumber < pMaxProcess)
+	_childProcess = malloc(_processMax * sizeof(int));
+	while(_processNumber < _processMax)
 	{
 		_pidFork = fork();
 		if(_pidFork == 0)
@@ -63,6 +133,7 @@ void startWebServer(int pMaxProcess)
 		}
 		else
 		{
+			_childProcess[_processNumber] = _pidFork;
 			_processNumber++;
 			waitpid(-1, NULL, WNOHANG);
 		}
@@ -73,6 +144,7 @@ void startWebServer(int pMaxProcess)
 	int idZoneIncomingConnection = shmget(keyIncomingConnection, sizeof(int), 0777 | IPC_CREAT);
 	_activesProcess = shmat(idZoneActiveProcess, 0, 0);
 	_incomingConnection = shmat(idZoneIncomingConnection, 0, 0);
+	detectCloseSignal();
 	acceptIncomingConnections();
 }
 
@@ -126,6 +198,7 @@ void acceptIncomingConnections()
 		while(1)
 		{
 			*_incomingConnection = accept(_socketServer, NULL, NULL);
+			print("Nueva conexion entrante recibida.");
 			if(*_incomingConnection == -1)
 			{
 				ErrorExit("Se ha presentado un error al intentar aceptar una nueva conexion entrante.");
@@ -175,9 +248,10 @@ void acceptIncomingConnections()
 			{
 				ancil_recv_fd(_socketPair[1], &_incomingConnectionFileHandler);
 				*_incomingConnection = 0; /*Liberamos al proceso padre para que pueda aceptar mas conexiones*/
-				attendIncomingRequest(_incomingConnectionFileHandler);
+				attendIncomingRequest(_incomingConnectionFileHandler, _rootPath);
 				shutdown(_incomingConnectionFileHandler, 2);
 				close(_incomingConnectionFileHandler);
+				print("Se ha cerrado una conexion ya atendida.");
 				*(_activesProcess + _processNumber) = 0; /*Liberamos el proceso nuevamente y lo dejamos disponible para atender otra conexion nuevamente*/
 			}
 			else

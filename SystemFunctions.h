@@ -22,7 +22,7 @@
 
 int _result;
 
-int readLine(int pConnection, char *pReadBuffer, int pMaxRead, int pPosContent);
+int readLine(int pConnection, char **pReadBuffer, int pMaxRead, int pPosContent);
 int charArrayToInt(char *pArray);
 int writeLine (int pConnection, char *pReadBuffer, int pNumberCharacters);
 void ErrorExit(char const * pErrorMessage);

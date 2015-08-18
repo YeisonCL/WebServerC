@@ -17,17 +17,22 @@
 #include <sys/shm.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <signal.h>
 #include <string.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <getopt.h>
 
-#define SERVER_PORT 8081 /*Defimos el puerto en el cual correra nuestro servidor.*/
 #define MAX_CONNECTIONS 1024 /*Definimos un limite de 1024 conexiones maximas encoladas.*/
+#define MAX_PATH 1024
 #define FILE_KEY "/bin/ls" /*Definimos la ruta que usaremos como acceso para la memoria compartida*/
 #define KEY_ACTIVE_PROCESS 150 /*Definimos el entero que usaremos como llave para la memoria compartida de los procesos activos*/
 #define KEY_INCOMING_CONNECTION 151 /*Definimos el entero que usaremos como llave para la memoria compartida de la conexion entrante*/
 
+char _rootPath[MAX_PATH];
+int *_childProcess;
+int _serverPort;
 int _socketServer; /*Definimos el socket en el cual correra el servidor.*/
 int _processNumber; /*Definimos una variable para guardar el numero de proceso que sera igual a la posicion en el arreglo de procesos activos*/
 int _processMax; /*Definimos una variable que guardara la cantidad maxima de procesos creados definidos por el usuario*/
@@ -41,8 +46,12 @@ int *_incomingConnection; /*Definimos una puntero donde se guardara la conexion 
 void createSocket(); /*Funcion que se encarga de crear el socket que sera utilizado por el web server.*/
 void bindSocket(); /*Avisamos al sistema operativo que hemos creado un socket y queremos que una nuestro programa a el.*/
 void listeningConnections(); /*Funcion que se encarga de escuchar las conexiones entrantes al servidor.*/
+void initializeWebServer(int argc, char *argv[]);
+void detectCloseSignal();
+void exitServer();
+void closeChildProcess();
 void acceptIncomingConnections(); /*Funcion encargada de aceptar conexiones entrantes y crear un nuevo proceso para cada una de ellas.*/
-void startWebServer(int pMaxProcess); /*Funcion que se encarga de precrear los procesos disponibles para aceptar conexiones*/
+void startWebServer(); /*Funcion que se encarga de precrear los procesos disponibles para aceptar conexiones*/
 void createSocketPair(); /*Funcion encargada de crear los sockets de comunicacion interna*/
 void fillToZero(); /*Funcion encargada de colocar la memoria compartida de procesos activos a ceros*/
 int verifyProcessAvailable(); /*Funcion que verifica si existe algun proceso disponible para ser asignado a una nueva conexion entrante*/

@@ -16,6 +16,6 @@
 
 #include "ParseRequest.h"
 
-int respondRequest(int pConnection, struct RequestInfo *pRequestInfo);
+int respondRequest(int pConnection, struct RequestInfo *pRequestInfo, char *pContentType);
 
 #endif

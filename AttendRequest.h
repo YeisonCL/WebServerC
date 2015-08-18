@@ -11,6 +11,8 @@
 #ifndef _ATTENDREQUEST_H
 #define _ATTENDREQUEST_H
 
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,8 +20,11 @@
 
 #include "ParseRequest.h"
 
-void attendIncomingRequest(int pConnection); /*Funcion que se encarga de atender una nueva peticion*/
-void attendOutputRequest(int pConnection, struct RequestInfo *pRequestInfo);
-void attendOutputGetRequest(int pConnection, struct RequestInfo *pRequestInfo);
+void attendIncomingRequest(int pConnection, char *pServerRootPath); /*Funcion que se encarga de atender una nueva peticion*/
+void attendOutputRequest(int pConnection, struct RequestInfo *pRequestInfo, char *pServerRootPath);
+void attendOutputGetRequest(int pConnection, struct RequestInfo *pRequestInfo, char *pServerRootPath);
+void attendOutputPutRequest(int pConnection, struct RequestInfo *pRequestInfo, char *pServerRootPath);
+void attendOutputPostRequest(int pConnection, struct RequestInfo *pRequestInfo, char *pServerRootPath);
+void attendOutputDeleteRequest(int pConnection, struct RequestInfo *pRequestInfo, char *pServerRootPath);
 
 #endif

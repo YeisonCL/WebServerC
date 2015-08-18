@@ -16,7 +16,10 @@
 
 #include "ParseRequest.h"
 
-int checkResource(struct RequestInfo *pRequestInfo);
+int checkResource(struct RequestInfo *pRequestInfo, char* pRootPath);
+int createResource(char *pPathResource);
+int writeInResource(int pFile, char *pMessage);
+int openResource(char *pPathResource);
 int sendResource (int pConnection, int pResource);
 
 #endif
