@@ -21,7 +21,7 @@ Define la cantidad de procesos a utilizar para la administración de conexiones 
 ```
 
 ###-w
-Define el path principal donde se alojará el servidor.
+Define el path principal donde se alojará el servidor, como sugerencia utilice la carpeta llamada "HardDrive" proporcionada.
 
 ```
 ./preforked-webserver -n 50 -w /root/www/http
