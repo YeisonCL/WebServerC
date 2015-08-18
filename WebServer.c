@@ -77,6 +77,7 @@ void detectCloseSignal()
 	closeSignal.sa_flags = 0;
 
    sigaction(SIGINT, &closeSignal, NULL);
+   sigaction(SIGTERM, &closeSignal, NULL);
 }
 
 void initializeWebServer(int argc, char *argv[])
