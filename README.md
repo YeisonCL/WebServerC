@@ -43,7 +43,7 @@ Brinda ayuda disponible sobre las opciones de configuración antes mencionadas.
 
 ##Signals Handled
 
-###SIGINT
+###SIGINT | SIGTERM
 
 Use CTRL + C para apagar el web server.
 
