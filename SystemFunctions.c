@@ -30,6 +30,80 @@ void stringUpper(char *pReadBuffer)
     }
 }
 
+void checkContentType(char *pResource, char **pContentType)
+{
+	char *auxPtrOne = strchr(pResource, '.');
+	char *auxPtrTwo = calloc(4, sizeof(char));
+	auxPtrOne++;
+	while(*auxPtrOne != '\0')
+	{
+		strncat(auxPtrTwo, auxPtrOne, 1);
+		auxPtrOne++;
+	}
+	stringUpper(auxPtrTwo);
+	if(!strcmp(auxPtrTwo, "HTML"))
+	{
+		*pContentType = "text/html";
+	}
+	else if(!strcmp(auxPtrTwo, "CGI"))
+	{
+		*pContentType = "text/html";
+	}
+	else if(!strcmp(auxPtrTwo, "JPEG"))
+	{
+		*pContentType = "image/jpeg";
+	}
+	else if(!strcmp(auxPtrTwo, "PNG"))
+	{
+		*pContentType = "image/png";
+	}
+	else if(!strcmp(auxPtrTwo, "TXT"))
+	{
+		*pContentType = "text";
+	}
+	else if(!strcmp(auxPtrTwo, "JPG"))
+	{
+		*pContentType = "image/jpg";
+	}
+	else if(!strcmp(auxPtrTwo, "CSS"))
+	{
+		*pContentType = "text/css";
+	}
+	else if(!strcmp(auxPtrTwo, "JS"))
+	{
+		*pContentType = "application/javascript";
+	}
+	else if(!strcmp(auxPtrTwo, "XML"))
+	{
+		*pContentType = "application/xml";
+	}
+	else if(!strcmp(auxPtrTwo, "MP3"))
+	{
+		*pContentType = "audio/mpeg";
+	}
+	else if(!strcmp(auxPtrTwo, "MPEG"))
+	{
+		*pContentType = "video/mpeg";
+	}
+	else if(!strcmp(auxPtrTwo, "MPG"))
+	{
+		*pContentType = "video/mpeg";
+	}
+	else if(!strcmp(auxPtrTwo, "MP4"))
+	{
+		*pContentType = "video/mp4";
+	}
+	else if(!strcmp(auxPtrTwo, "MOV"))
+	{
+		*pContentType = "video/quicktime";
+	}
+	else
+	{
+		*pContentType = "application/octet-stream";
+	}
+	free(auxPtrTwo);
+}
+
 int charArrayToInt(char *pArray)
 {
 	return atoi(pArray);

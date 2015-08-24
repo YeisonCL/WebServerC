@@ -25,6 +25,7 @@ int _result;
 int readLine(int pConnection, char **pReadBuffer, int pMaxRead, int pPosContent);
 int charArrayToInt(char *pArray);
 int writeLine (int pConnection, char *pReadBuffer, int pNumberCharacters);
+void checkContentType(char *pResource, char **pContentType);
 void ErrorExit(char const * pErrorMessage);
 void stringUpper(char *pReadBuffer); /*Funcion que pone en mayusculas un string dado*/
 void decodeURL(char *pReadBuffer);

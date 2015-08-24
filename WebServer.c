@@ -51,41 +51,40 @@ void closeChildProcess()
 {
 	for(int i = 0; i < _processMax; i++)
 	{
-		kill(_childProcess[i], SIGKILL);
+		kill(_childProcess[i], SIGINT);
 	}
 	free(_childProcess);
 }
 
-void exitServer()
-{
-	print("Cerrando socket principal.");
-	close(_socketServer);
-	print("Cerrando sockets de conexion interna.");
-	close(_socketPair[1]);
-	print("Cerrando los procesos hijos creados.");
-	closeChildProcess();
-	print("Hasta pronto.");
-    exit(EXIT_SUCCESS); 
-
-}
-
-void detectCloseSignal()
+void detectCloseSignal(int pType)
 {
 	struct sigaction closeSignal;
-	closeSignal.sa_handler = exitServer;
+	if(pType == 0)
+	{
+		closeSignal.sa_handler = exitServerFork;
+	}
+	else if(pType == 1)
+	{
+		closeSignal.sa_handler = exitServerChild;
+	}
+	else
+	{
+		closeSignal.sa_handler = exitServerThread;
+	}
 	sigemptyset(&closeSignal.sa_mask);
 	closeSignal.sa_flags = 0;
-
-   sigaction(SIGINT, &closeSignal, NULL);
-   sigaction(SIGTERM, &closeSignal, NULL);
+   	sigaction(SIGINT, &closeSignal, NULL);
+   	sigaction(SIGTERM, &closeSignal, NULL);
 }
+
 
 void initializeWebServer(int argc, char *argv[])
 {
 	int option;
 	int controlFlag = 0;
-	int flagHelp = 0;
-	while((option = getopt(argc,argv,"n:w:p:h")) != -1)
+	int flagThread = 0;
+	int flagFork = 0;
+	while((option = getopt(argc,argv,"n:w:p:tfh")) != -1)
 	{
 		controlFlag = 1;
 		switch (option)
@@ -99,12 +98,21 @@ void initializeWebServer(int argc, char *argv[])
 			case 'p':
 				_serverPort = charArrayToInt(optarg);
 				break;
+			case 't':
+				flagThread = 1;
+				break;
+			case 'f':
+				flagFork = 1;
+				break;
 			case 'h':
-				flagHelp = 1;
-				print("-n \t Cantidad de procesos a utilizar para la administracion de conexiones entrantes en el servidor.");
-				print("-w \t Path principal donde se alojara el servidor.");
-				print("-p \t Puerto donde se iniciara el servidor.");
-				print("Ejemplo: ./preforked-webserver -n 20 -w /root/http/www -p 8081");
+				fprintf(stdout, "\nUSO: ./RayquazaWebServer [-f] [-t] [-n PROCESS] [-w PATH] [-p PORT]\n\n");
+				fprintf(stdout, "Argumentos:\n\n");
+				fprintf(stdout, "-f \t FORK \t Inicia el servidor en modo pre-forked.\n");
+				fprintf(stdout, "-t \t THREAD \t Inicia el servidor en modo pre-thread.\n");
+				fprintf(stdout, "-n \t PROCESS \t Cantidad de procesos a utilizar para la administracion de conexiones entrantes en el servidor.\n");
+				fprintf(stdout, "-w \t PATH \t Path principal donde se alojara el servidor.\n");
+				fprintf(stdout, "-p \t PORT \t Puerto donde se iniciara el servidor, por defecto los puertos disponibles son 80:HTTP, 21:FTP, 22:SSH, 23:Telnet, 25:SMTP, 53:DNS y 161:SMNP cualquier otro dado sera tratado como protocolo HTTP.\n");
+				exit(EXIT_SUCCESS);				
 				break;
 		}
 	}
@@ -112,18 +120,23 @@ void initializeWebServer(int argc, char *argv[])
 	{
 		print("Por favor digite los parametros de configuracion del servidor, utilice la opcion -h para mas informacion.");
 	}
-	else if(flagHelp == 0)
+	else if(flagFork == 1)
 	{
-		startWebServer();
+		startForkWebServer();
+	}
+	else if(flagThread == 1)
+	{
+		startThreadingWebServer();
 	}
 }
 
 /*Funcion que se encarga de crear los procesos que se utilizaran para atender las conexiones entrantes*/
-void startWebServer()
+void startForkWebServer()
 {
 	_processNumber = 0;
 	_pidFork = -1;
 	createSocketPair();
+	detectCloseSignal(0);
 	_childProcess = malloc(_processMax * sizeof(int));
 	while(_processNumber < _processMax)
 	{
@@ -141,11 +154,10 @@ void startWebServer()
 	}
 	int keyActiveProcess = ftok(FILE_KEY, KEY_ACTIVE_PROCESS);
 	int keyIncomingConnection = ftok(FILE_KEY, KEY_INCOMING_CONNECTION);
-	int idZoneActiveProcess = shmget(keyActiveProcess, sizeof(int) * _processMax, 0777 | IPC_CREAT);
-	int idZoneIncomingConnection = shmget(keyIncomingConnection, sizeof(int), 0777 | IPC_CREAT);
-	_activesProcess = shmat(idZoneActiveProcess, 0, 0);
-	_incomingConnection = shmat(idZoneIncomingConnection, 0, 0);
-	detectCloseSignal();
+	_idZoneActiveProcess = shmget(keyActiveProcess, sizeof(int) * _processMax, 0777 | IPC_CREAT);
+	_idZoneIncomingConnection = shmget(keyIncomingConnection, sizeof(int), 0777 | IPC_CREAT);
+	_activesProcess = shmat(_idZoneActiveProcess, 0, 0);
+	_incomingConnection = shmat(_idZoneIncomingConnection, 0, 0);
 	acceptIncomingConnections();
 }
 
@@ -156,6 +168,50 @@ void fillToZero()
 	{
 		*(_activesProcess + i) = 0;
 	}
+}
+
+void exitServerFork()
+{
+	print("Cerrando socket principal.");
+	close(_socketServer);
+	print("Cerrando sockets de conexion interna.");
+	close(_socketPair[0]);
+	print("Cerando las zonas de memoria compartida.");
+	shmctl(_idZoneActiveProcess, IPC_RMID, NULL);
+	shmctl(_idZoneIncomingConnection, IPC_RMID, NULL);
+	print("Cerrando los procesos hijos creados.");
+	closeChildProcess();
+	print("Hasta pronto.");
+    exit(EXIT_SUCCESS); 
+
+}
+
+void exitServerChild()
+{
+	close(_socketPair[1]);
+    exit(EXIT_SUCCESS); 
+}
+
+void exitServerThread()
+{
+	print("Cerrando socket principal.");
+	close(_socketServer);
+	print("Cerrando threads que se encuentran abiertos.");
+	_controlFlag = 0;	
+    exit(EXIT_SUCCESS); 
+}
+
+int activeProcess()
+{
+	int count = 0;
+	for(int i = 0; i < _processMax; i++)
+	{
+		if(*(_activesProcess + i) == 1)
+		{
+			count++;
+		}
+	}
+	return count;
 }
 
 /*Funcion que verifica si existe algun proceso disponible para ser asignado a una nueva conexion entrante*/
@@ -191,6 +247,7 @@ void acceptIncomingConnections()
 {
 	if(_pidFork != 0)
 	{
+		print("Iniciando el servidor en modo pre-forked...");
 		createSocket();
 		bindSocket();
 		listeningConnections();
@@ -221,27 +278,16 @@ void acceptIncomingConnections()
 					print("Conexion rechazada por exceso de carga en el servidor.");
 					char *errorMessage = "Ups, estamos al maximo de carga permitida en el servidor, por favor intentalo nuevamente en un momento.";
 					send(*_incomingConnection, errorMessage, strlen(errorMessage), 0);
-					if (shutdown(*_incomingConnection, 2) == -1)
-					{
-						ErrorExit("Se ha producido un error al intentar cerrar la conexion en el proceso padre.");
-					}
-					else
-					{
-						close(*_incomingConnection);
-						print("Conexion en el proceso padre cerrada correctamente.");
-					}
+					shutdown(*_incomingConnection, 2);
+					close(*_incomingConnection);
+					print("Conexion en el proceso padre cerrada correctamente.");
 				}
 			}
 		}
 	}
 	else
 	{
-		int keyActiveProcess = ftok(FILE_KEY, KEY_ACTIVE_PROCESS);
-		int keyIncomingConnection = ftok(FILE_KEY, KEY_INCOMING_CONNECTION);
-		int idZoneActiveProcess = shmget(keyActiveProcess, sizeof(int) * _processMax, 0777 | IPC_CREAT);
-		int idZoneIncomingConnection = shmget(keyIncomingConnection, sizeof(int), 0777 | IPC_CREAT);
-		_activesProcess = shmat(idZoneActiveProcess, 0, 0);
-		_incomingConnection = shmat(idZoneIncomingConnection, 0, 0);
+		detectCloseSignal(1);
 		close(_socketPair[0]);
 		while(1)
 		{
@@ -249,7 +295,7 @@ void acceptIncomingConnections()
 			{
 				ancil_recv_fd(_socketPair[1], &_incomingConnectionFileHandler);
 				*_incomingConnection = 0; /*Liberamos al proceso padre para que pueda aceptar mas conexiones*/
-				attendIncomingRequest(_incomingConnectionFileHandler, _rootPath);
+				attendIncomingRequest(_incomingConnectionFileHandler, _rootPath, _serverPort, _processMax, activeProcess());
 				shutdown(_incomingConnectionFileHandler, 2);
 				close(_incomingConnectionFileHandler);
 				print("Se ha cerrado una conexion ya atendida.");
@@ -261,5 +307,86 @@ void acceptIncomingConnections()
 			}
 		}
 	}
+}
+
+void *connectionHandlerThread() 
+{
+   int newSocket;
+   while(_controlFlagThread)
+   {
+      pthread_mutex_lock(&_newSocketMutex);
+      while (_newSocket == -1)
+      {
+        pthread_cond_wait(&_threadsCondition, &_newSocketMutex);
+      }
+      newSocket = _newSocket;
+      _newSocket = -1;
+      pthread_mutex_unlock(&_newSocketMutex);
+      if ( newSocket > 0)
+      {
+      	attendIncomingRequest(newSocket, _rootPath, _serverPort, _processMax, _currentThreads);
+		shutdown(newSocket, 2);
+		close(newSocket);
+		print("Se ha cerrado una conexion ya atendida.");
+         pthread_mutex_lock(&_threadNumberMutex);
+         _currentThreads--;
+         pthread_mutex_unlock(&_threadNumberMutex);
+         pthread_cond_signal(&_acceptCondition);
+      }
+
+   }
+   pthread_exit(NULL);
+}
+
+void createThreads(int pThreadNumber) 
+{
+   _threadNumber = pThreadNumber;
+   for (int i = 0; i < pThreadNumber; i++)
+   {
+      pthread_t thread;
+      int rc = pthread_create(&thread, NULL, connectionHandlerThread, NULL);
+      if (rc)
+      {
+         ErrorExit("Error no controlado al crear un nuevo thread.");
+      }
+   }
+}
+
+void startThreadingWebServer()
+{
+   	_currentThreads = 0;
+   	_controlFlagThread = 1;
+
+   	print("Iniciando el servidor en modo pre-thread...");
+   	detectCloseSignal(1);
+   	createSocket();
+	bindSocket();
+	createThreads(_processMax);
+	listeningConnections();
+
+   	while (_controlFlagThread) 
+   	{
+   		_incomingConnectionFileHandler = accept(_socketServer, NULL, NULL);
+   		print("Nueva conexion entrante aceptada.");
+   		if (_incomingConnectionFileHandler < 0) 
+      	{
+      		ErrorExit("Se ha presentado un error al intentar aceptar una nueva conexion entrante.");
+      	} 
+      	else 
+      	{
+         	pthread_mutex_lock(&_newSocketMutex);
+         	_newSocket = _incomingConnectionFileHandler;
+         	pthread_mutex_unlock(&_newSocketMutex);
+         	pthread_cond_broadcast(&_threadsCondition);
+         	pthread_mutex_lock(&_threadNumberMutex);
+         	_currentThreads++;
+         	if (_threadNumber == _currentThreads)
+         	{ 
+            	pthread_cond_wait(&_acceptCondition, &_threadNumberMutex);
+         	}
+         	pthread_mutex_unlock(&_threadNumberMutex);
+      	}	
+   }
+   pthread_exit(NULL);
 }
 
