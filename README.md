@@ -38,21 +38,21 @@ Inicia el WebServer en modo PRE-THREAD
 Define el path principal donde se alojará el servidor, como sugerencia utilice la carpeta llamada "HardDrive" proporcionada.
 
 ```
-./preforked-webserver -n 50 -f -w /root/www/http
+./RayquazaWebServer -n 50 -f -w /root/www/http
 ```
 
 ###-p
 Define el puerto donde iniciará el servidor, por defecto los puertos disponibles son 80:HTTP, 21:FTP, 22:SSH, 23:Telnet, 25:SMTP, 53:DNS y 161:SMNP cualquier otro dado sera tratado como protocolo HTTP
 
 ```
-./preforked-webserver -n 50 -f -w /root/www/http -p 80
+./RayquazaWebServer -n 50 -f -w /root/www/http -p 80
 ```
 
 ###-h
 Brinda ayuda disponible sobre las opciones de configuración antes mencionadas.
 
 ```
-./preforked-webserver -h
+./RayquazaWebServer -h
 ```
 
 ##Signals Handled
